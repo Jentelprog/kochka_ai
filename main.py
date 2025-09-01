@@ -1,16 +1,21 @@
 import speech_recognition as sr
 
+import chromadb  # type: ignore
+import pypdf  # type: ignore
+from langchain_community.document_loaders import PyPDFDirectoryLoader  # type: ignore
+from langchain_text_splitters import RecursiveCharacterTextSplitter  # type: ignore
+
+from langchain_google_genai import ChatGoogleGenerativeAI  # type: ignore
+from langchain_core.prompts import ChatPromptTemplate  # type: ignore
+
+
 # from openai import OpenAI
-from gtts import gTTS
 import time
-import os
-from pydub import AudioSegment
-import winsound
 import pyautogui
 import json
 from duckduckgo_search import DDGS
 from google import genai
-import whisper
+
 #elevenlabs requirements
 from dotenv import load_dotenv
 from elevenlabs.client import ElevenLabs
@@ -23,7 +28,6 @@ def goToDesk():
     c = pyautogui.size()
     pyautogui.moveTo(c)
     pyautogui.click()
-
 
 # ducksearch is function useing the duckduckgo library to get link that will be searched for in the browser later
 def ducksearch(prompt, max_results=2):
@@ -41,7 +45,6 @@ def ducksearch(prompt, max_results=2):
     # n=recognizer()
     # googleSpeak(n)
     search(links[1])
-
 
 # recognizer is a function used to reconize the speach from the user and turn it to text
 def recognizer():
@@ -89,7 +92,6 @@ def append_json(field, content):
     with open("history.json", "w", encoding="UTF-8") as f:
         json.dump(json_file, f, indent=4)
 
-
 # gemini is used to comunicate with gemini api as an alternative for the local server
 def gemini(text):
     with open(
@@ -101,6 +103,7 @@ def gemini(text):
 
     response = client.models.generate_content(model="gemini-2.5-flash", contents=text)
     return response.text
+
 #to shut down the pc
 def shutdown():
     pyautogui.screenshot("screenshot.png")
