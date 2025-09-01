@@ -16,11 +16,61 @@ import json
 from duckduckgo_search import DDGS
 from google import genai
 
-#elevenlabs requirements
+# elevenlabs requirements
 from dotenv import load_dotenv
 from elevenlabs.client import ElevenLabs
 from elevenlabs import play
 import os
+
+
+class LLMManager:
+    def _init_(self) -> None:
+        self.llm = ChatGoogleGenerativeAI(
+            model="gemini-2.5-flash",
+            api_key=api_key,
+        )
+
+    def invoke(self, prompt, **kwargs) -> str:
+        return self.llm.invoke(prompt).content
+
+
+def rag():
+    chroma_client = chromadb.PersistentClient(
+        path=r"C:\Users\yassi\Downloads\ieee ai\content\chroma_db"
+    )
+
+    collection = chroma_client.get_or_create_collection(
+        name="tutorial", metadata={"hnsw:space": "cosine"}
+    )
+
+    loader = PyPDFDirectoryLoader(r"C:\Users\yassi\Downloads\ieee ai\content\data")
+
+    raw_documents = loader.load()
+
+    text_splitter = RecursiveCharacterTextSplitter(
+        chunk_size=500,
+        chunk_overlap=200,
+        length_function=len,
+        is_separator_regex=False,
+    )
+
+    chunks = text_splitter.split_documents(raw_documents)
+
+    documents = []
+    metadata = []
+    ids = []
+
+    i = 0
+
+    for chunk in chunks:
+        documents.append(chunk.page_content)
+        ids.append("ID" + str(i))
+        metadata.append(chunk.metadata)
+
+        i += 1
+
+    collection.upsert(documents=documents, metadatas=metadata, ids=ids)
+
 
 # goToDesk is a function that i made so each time the bot take control i go back to desktop to avoid errors from having defrent starting points
 def goToDesk():
@@ -28,6 +78,7 @@ def goToDesk():
     c = pyautogui.size()
     pyautogui.moveTo(c)
     pyautogui.click()
+
 
 # ducksearch is function useing the duckduckgo library to get link that will be searched for in the browser later
 def ducksearch(prompt, max_results=2):
@@ -45,6 +96,7 @@ def ducksearch(prompt, max_results=2):
     # n=recognizer()
     # googleSpeak(n)
     search(links[1])
+
 
 # recognizer is a function used to reconize the speach from the user and turn it to text
 def recognizer():
@@ -65,6 +117,7 @@ def recognizer():
             print(f"Could not request results; {e}")
     return text
 
+
 # speak is using elevenlabs good quaity but limited time of free use
 def elevenSpeak(text):
     load_dotenv()
@@ -84,6 +137,7 @@ def elevenSpeak(text):
 
     play(audio)
 
+
 # append_json is used to append the json file that is used as history
 def append_json(field, content):
     with open("history.json", "r", encoding="UTF-8") as f:
@@ -91,6 +145,7 @@ def append_json(field, content):
     json_file[field].append(content)
     with open("history.json", "w", encoding="UTF-8") as f:
         json.dump(json_file, f, indent=4)
+
 
 # gemini is used to comunicate with gemini api as an alternative for the local server
 def gemini(text):
@@ -104,24 +159,29 @@ def gemini(text):
     response = client.models.generate_content(model="gemini-2.5-flash", contents=text)
     return response.text
 
-#to shut down the pc
+
+# to shut down the pc
 def shutdown():
     pyautogui.screenshot("screenshot.png")
     # pyautogui.screenshot("tofind1.png",[1128,65,307,42])
-    r=pyautogui.locate("images/tofind.png","screenshot.png")
+    r = pyautogui.locate("images/tofind.png", "screenshot.png")
     print(r)
-    pyautogui.moveTo(r,duration=2)
+    pyautogui.moveTo(r, duration=2)
     pyautogui.click()
     time.sleep(1)
     pyautogui.screenshot("screenshot.png")
-    r1=pyautogui.locate("images/tofind2.png","screenshot.png")
-    pyautogui.moveTo(r1,duration=2)
+    r1 = pyautogui.locate("images/tofind2.png", "screenshot.png")
+    pyautogui.moveTo(r1, duration=2)
     pyautogui.click()
     time.sleep(1)
     pyautogui.screenshot("screenshot.png")
-    r2=pyautogui.locate("images/tofind3.png","screenshot.png")
-    pyautogui.moveTo(r2,duration=1)
+    r2 = pyautogui.locate("images/tofind3.png", "screenshot.png")
+    pyautogui.moveTo(r2, duration=1)
     pyautogui.doubleClick()
+
+
+llm = LLMManager()
+
 
 # resp is used to choose what the bot should do based on your input
 def resp(text):
@@ -131,16 +191,39 @@ def resp(text):
             prompt = recognizer()
             # prompt = "cats memes"
             ducksearch(prompt)
-        if text.lower() =="shut down":
+        if text.lower() == "shut down":
             shutdown()
         else:
             confirm = pyautogui.confirm(
                 f"do you want to talk with the chatbot(it's slow)\n you said:{text}"
             )
             if confirm == "OK":
-                prompt1 = f"you will pretend that you are my girlfriend and assistance don't munchin it unless i ask you about it you love me to death. this is the prompt : {text}"
-                prompt = f"You are my personal chat assistant. Talk to me like a smart, relaxed friend who’s always ready to help. I might ask you questions, share ideas, or just chat when I’m bored. Be curious, supportive, and honest. If I seem down or stuck, help me think things through. If I’m just talking, go with the flow. Don’t act like a robot. Be human-like, casual, and clear. If I ask something weird, silly, or random — roll with it. this is the prompt : {text}"
-                response = gemini(prompt)
+                collection = rag()
+                results = collection.query(query_texts=[querry], n_results=3)
+
+                print(results["documents"])
+
+                system_prompt = (
+                    """
+                You are a mascot of the IEEE ISI student branch. You answer questions on this sb and talk about it to promote it.
+                But you only answer based on knowledge I'm providing you. You don't use your internal
+                knowledge and you don't make thins up.
+                If you don't know the answer, just say: I don't know
+                --------------------
+                The data:
+                """
+                    + str(results["documents"])
+                    + """
+                --------------------
+                the question : """
+                    + str(querry)
+                    + """
+                """
+                )
+
+                response = llm.invoke(system_prompt)
+                print("----------------------")
+                print(response)
                 h = {"user": text, "bot": response}
                 append_json("chat", h)
                 print(str(response).encode("utf-8"))
@@ -148,14 +231,14 @@ def resp(text):
 
 
 if __name__ == "__main__":
-    text = ""
-    while text != "exit":
-        text = recognizer()
-        # text = input("user: ")
-        # search(text)
-        if text == "exit":
+    querry = ""
+    while querry != "exit":
+        querry = recognizer()
+        # querry = input("user: ")
+        # search(querry)
+        if querry == "exit":
             break
-        if text != "Sorry, I could not understand the audio.":
-            resp(text)
-            # response = chat(text)
+        if querry != "Sorry, I could not understand the audio.":
+            resp(querry)
+            # response = chat(querry)
             # print(response)
