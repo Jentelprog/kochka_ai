@@ -14,7 +14,6 @@ import time
 import pyautogui
 import json
 from duckduckgo_search import DDGS
-from google import genai
 
 # elevenlabs requirements
 from dotenv import load_dotenv
@@ -23,15 +22,12 @@ from elevenlabs import play
 import os
 
 
-class LLMManager:
-    def _init_(self) -> None:
-        self.llm = ChatGoogleGenerativeAI(
+def gemini(prompt):
+        llm = ChatGoogleGenerativeAI(
             model="gemini-2.5-flash",
-            api_key=api_key,
+            api_key="AIzaSyA4jiQbZ8cesFmZdWNkXY3UlnTkEqYQ7GE",
         )
-
-    def invoke(self, prompt, **kwargs) -> str:
-        return self.llm.invoke(prompt).content
+        return llm.invoke(prompt).content
 
 
 def rag():
@@ -43,7 +39,9 @@ def rag():
         name="tutorial", metadata={"hnsw:space": "cosine"}
     )
 
-    loader = PyPDFDirectoryLoader(r"C:\Users\ilyes\OneDrive\Documents\GitHub\kochka_ai\data")
+    loader = PyPDFDirectoryLoader(
+        r"C:\Users\ilyes\OneDrive\Documents\GitHub\kochka_ai\data"
+    )
 
     raw_documents = loader.load()
 
@@ -70,6 +68,7 @@ def rag():
         i += 1
 
     collection.upsert(documents=documents, metadatas=metadata, ids=ids)
+    return collection
 
 
 # goToDesk is a function that i made so each time the bot take control i go back to desktop to avoid errors from having defrent starting points
@@ -147,19 +146,6 @@ def append_json(field, content):
         json.dump(json_file, f, indent=4)
 
 
-# gemini is used to comunicate with gemini api as an alternative for the local server
-def gemini(text):
-    with open(
-        r"C:\Users\ilyes\OneDrive\Desktop\api.txt", "r"
-    ) as f:  # change this part so you have your api key here
-        api_key = f.readlines()[0]
-
-    client = genai.Client(api_key=api_key)
-
-    response = client.models.generate_content(model="gemini-2.5-flash", contents=text)
-    return response.text
-
-
 # to shut down the pc
 def shutdown():
     pyautogui.screenshot("screenshot.png")
@@ -180,25 +166,21 @@ def shutdown():
     pyautogui.doubleClick()
 
 
-llm = LLMManager()
-
-
 # resp is used to choose what the bot should do based on your input
-def resp(text):
-    if text != "Sorry, I could not understand the audio.":
-        if "search" in text:
+def resp(querry, collection):
+    if querry != "Sorry, I could not understand the audio.":
+        if "search" in querry:
             elevenSpeak("what do you want me to search for")
             prompt = recognizer()
             # prompt = "cats memes"
             ducksearch(prompt)
-        if text.lower() == "shut down":
+        if querry.lower() == "shut down":
             shutdown()
         else:
             confirm = pyautogui.confirm(
-                f"do you want to talk with the chatbot(it's slow)\n you said:{text}"
+                f"do you want to talk with the chatbot(it's slow)\n you said:{querry}"
             )
             if confirm == "OK":
-                collection = rag()
                 results = collection.query(query_texts=[querry], n_results=3)
 
                 print(results["documents"])
@@ -207,7 +189,7 @@ def resp(text):
                     """
                 You are a mascot of the IEEE ISI student branch. You answer questions on this sb and talk about it to promote it.
                 But you only answer based on knowledge I'm providing you. You don't use your internal
-                knowledge and you don't make thins up.
+                knowledge and you don't make things up.
                 If you don't know the answer, just say: I don't know
                 --------------------
                 The data:
@@ -220,18 +202,18 @@ def resp(text):
                     + """
                 """
                 )
-
-                response = llm.invoke(system_prompt)
+                response = gemini(system_prompt)
                 print("----------------------")
                 print(response)
-                h = {"user": text, "bot": response}
-                append_json("chat", h)
-                print(str(response).encode("utf-8"))
+                h = {"user": querry, "bot": response}
+                # append_json("chat", h)
+                # print(str(response).encode("utf-8"))
                 elevenSpeak(str(response))
 
 
 if __name__ == "__main__":
     querry = ""
+    collection = rag()
     while querry != "exit":
         querry = recognizer()
         # querry = input("user: ")
@@ -239,6 +221,6 @@ if __name__ == "__main__":
         if querry == "exit":
             break
         if querry != "Sorry, I could not understand the audio.":
-            resp(querry)
+            resp(querry, collection)
             # response = chat(querry)
             # print(response)

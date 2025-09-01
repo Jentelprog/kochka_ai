@@ -16,3 +16,4 @@ openai-whisper
 setuptools-rust
 RealtimeSTT
 pyttsx3
+elevenlabs
