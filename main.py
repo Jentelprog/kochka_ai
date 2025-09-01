@@ -36,14 +36,14 @@ class LLMManager:
 
 def rag():
     chroma_client = chromadb.PersistentClient(
-        path=r"C:\Users\yassi\Downloads\ieee ai\content\chroma_db"
+        path="C:/Users/ilyes/OneDrive/Documents/GitHub/kochka_ai/data_base/chroma_db"
     )
 
     collection = chroma_client.get_or_create_collection(
         name="tutorial", metadata={"hnsw:space": "cosine"}
     )
 
-    loader = PyPDFDirectoryLoader(r"C:\Users\yassi\Downloads\ieee ai\content\data")
+    loader = PyPDFDirectoryLoader(r"C:\Users\ilyes\OneDrive\Documents\GitHub\kochka_ai\data")
 
     raw_documents = loader.load()
 
