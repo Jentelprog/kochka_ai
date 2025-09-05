@@ -17,3 +17,7 @@ setuptools-rust
 RealtimeSTT
 pyttsx3
 elevenlabs
+opencv-python
+sounddevice
+scipy
+subprocess

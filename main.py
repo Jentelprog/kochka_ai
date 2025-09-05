@@ -23,11 +23,11 @@ import os
 
 
 def gemini(prompt):
-        llm = ChatGoogleGenerativeAI(
-            model="gemini-2.5-flash",
-            api_key="AIzaSyA4jiQbZ8cesFmZdWNkXY3UlnTkEqYQ7GE",
-        )
-        return llm.invoke(prompt).content
+    llm = ChatGoogleGenerativeAI(
+        model="gemini-2.5-flash",
+        api_key="AIzaSyA4jiQbZ8cesFmZdWNkXY3UlnTkEqYQ7GE",
+    )
+    return llm.invoke(prompt).content
 
 
 def rag():
@@ -46,7 +46,7 @@ def rag():
     raw_documents = loader.load()
 
     text_splitter = RecursiveCharacterTextSplitter(
-        chunk_size=500,
+        chunk_size=10000,
         chunk_overlap=200,
         length_function=len,
         is_separator_regex=False,
@@ -127,10 +127,11 @@ def elevenSpeak(text):
     elevenlabs = ElevenLabs(
         api_key=api_key,
     )
-
+    anna = "Cx2PEJFdr8frSuUVB6yZ"
+    v1 = "tnSpp4vdxKPjI9w0GnoV"
     audio = elevenlabs.text_to_speech.convert(
         text=text,
-        voice_id="tnSpp4vdxKPjI9w0GnoV",
+        voice_id=anna,
         model_id="eleven_multilingual_v2",
     )
 
