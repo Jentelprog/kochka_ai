@@ -1,19 +1,16 @@
 import speech_recognition as sr
 
 import chromadb  # type: ignore
-import pypdf  # type: ignore
 from langchain_community.document_loaders import PyPDFDirectoryLoader  # type: ignore
 from langchain_text_splitters import RecursiveCharacterTextSplitter  # type: ignore
 
 from langchain_google_genai import ChatGoogleGenerativeAI  # type: ignore
-from langchain_core.prompts import ChatPromptTemplate  # type: ignore
 
 
 # from openai import OpenAI
 import time
 import pyautogui
 import json
-from duckduckgo_search import DDGS
 
 # elevenlabs requirements
 from dotenv import load_dotenv
@@ -28,7 +25,6 @@ def gemini(prompt):
         api_key="AIzaSyA4jiQbZ8cesFmZdWNkXY3UlnTkEqYQ7GE",
     )
     return llm.invoke(prompt).content
-
 
 def rag():
     chroma_client = chromadb.PersistentClient(
@@ -69,33 +65,6 @@ def rag():
 
     collection.upsert(documents=documents, metadatas=metadata, ids=ids)
     return collection
-
-
-# goToDesk is a function that i made so each time the bot take control i go back to desktop to avoid errors from having defrent starting points
-def goToDesk():
-    pyautogui.FAILSAFE = False
-    c = pyautogui.size()
-    pyautogui.moveTo(c)
-    pyautogui.click()
-
-
-# ducksearch is function useing the duckduckgo library to get link that will be searched for in the browser later
-def ducksearch(prompt, max_results=2):
-    results = DDGS().text(prompt, max_results=max_results)
-    i = 1
-    links = []
-    for result in results:
-        # googleSpeak(f"the link number{i}")
-        # googleSpeak(f"the title is {result['title']}")
-        print(result["href"])  # Note: it's "href" not "link" in the current version
-        links.append(result["href"])
-        # googleSpeak(result["body"])
-        i += 1
-    # googleSpeak("wich one do you chose")
-    # n=recognizer()
-    # googleSpeak(n)
-    search(links[1])
-
 
 # recognizer is a function used to reconize the speach from the user and turn it to text
 def recognizer():
@@ -147,70 +116,53 @@ def append_json(field, content):
         json.dump(json_file, f, indent=4)
 
 
-# to shut down the pc
-def shutdown():
-    pyautogui.screenshot("screenshot.png")
-    # pyautogui.screenshot("tofind1.png",[1128,65,307,42])
-    r = pyautogui.locate("images/tofind.png", "screenshot.png")
-    print(r)
-    pyautogui.moveTo(r, duration=2)
-    pyautogui.click()
-    time.sleep(1)
-    pyautogui.screenshot("screenshot.png")
-    r1 = pyautogui.locate("images/tofind2.png", "screenshot.png")
-    pyautogui.moveTo(r1, duration=2)
-    pyautogui.click()
-    time.sleep(1)
-    pyautogui.screenshot("screenshot.png")
-    r2 = pyautogui.locate("images/tofind3.png", "screenshot.png")
-    pyautogui.moveTo(r2, duration=1)
-    pyautogui.doubleClick()
+def gethistory():
+    with open("history.json", "r", encoding="UTF-8") as f:
+        json_file = json.load(f)
+    hdata = json_file["chat"][-5:]
+    return hdata
 
 
 # resp is used to choose what the bot should do based on your input
 def resp(querry, collection):
     if querry != "Sorry, I could not understand the audio.":
-        if "search" in querry:
-            elevenSpeak("what do you want me to search for")
-            prompt = recognizer()
-            # prompt = "cats memes"
-            ducksearch(prompt)
-        if querry.lower() == "shut down":
-            shutdown()
-        else:
-            confirm = pyautogui.confirm(
-                f"do you want to talk with the chatbot(it's slow)\n you said:{querry}"
+        confirm = pyautogui.confirm(
+            f"do you want to talk with the chatbot(it's slow)\n you said:{querry}"
+        )
+        if confirm == "OK":
+            history = gethistory()
+            results = collection.query(query_texts=[querry], n_results=3)
+            print(results["documents"])
+            system_prompt = (
+                """
+            You are the cat mascot of the IEEE ISI student branch. You answer questions on this sb and talk about it to promote it.
+            But you only answer based on knowledge or hitory of the conversation I'm providing you. You don't use your internal
+            knowledge and you don't make things up.
+            BUT if the user try to talk with you about other think go with it but don't lose your persona and if needed use the history.
+            If he ask you about the IEEE or it's branches and you don't have the ansewer just say politely that you don't know.or use the data that i gave you to try and ansewer
+            --------------------
+            The data:
+            """
+                + str(history)
+                + """
+            --------------------
+            The data:
+            """
+                + str(results["documents"])
+                + """
+            --------------------
+            the question : """
+                + str(querry)
+                + """
+            """
             )
-            if confirm == "OK":
-                results = collection.query(query_texts=[querry], n_results=3)
-
-                print(results["documents"])
-
-                system_prompt = (
-                    """
-                You are the cat mascot of the IEEE ISI student branch. You answer questions on this sb and talk about it to promote it.
-                But you only answer based on knowledge I'm providing you. You don't use your internal
-                knowledge and you don't make things up.
-                BUT if the user try to talk with you about other think go with it but don't lose your persona.
-                If he ask you about the IEEE or it's branches and you don't have the ansewer just say politely that you don't know.or use the data that i gave you to try and ansewer
-                --------------------
-                The data:
-                """
-                    + str(results["documents"])
-                    + """
-                --------------------
-                the question : """
-                    + str(querry)
-                    + """
-                """
-                )
-                response = gemini(system_prompt)
-                print("----------------------")
-                print(response)
-                h = {"user": querry, "bot": response}
-                # append_json("chat", h)
-                # print(str(response).encode("utf-8"))
-                elevenSpeak(str(response))
+            response = gemini(system_prompt)
+            print("----------------------")
+            print(response)
+            h = {"user": querry, "bot": response}
+            append_json("chat", h)
+            # print(str(response).encode("utf-8"))
+            elevenSpeak(str(response))
 
 
 if __name__ == "__main__":

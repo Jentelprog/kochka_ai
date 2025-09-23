@@ -23,7 +23,7 @@ def animate(position):
         t2 = r.randint(50, 500)
         cv2.imshow("animation", kochka2)
         cv2.waitKey(t2)
-        t3 = r.randint(500, 1000)
+        t3 = r.randint(500, 1500)
         cv2.imshow("animation", kochka3)
         cv2.waitKey(t3)
 
@@ -36,9 +36,9 @@ kochka3 = cv2.imread(r"kochka\kochka3.png")
 fs = 48000
 duration = 0.5
 frequency_threshold = 100
-
+print(sd.query_devices())
 # Use Stereo Mix (index 30)
-sd.default.device = 12
+sd.default.device = int(input("choose your device: "))
 
 position = "bad"
 while True:
